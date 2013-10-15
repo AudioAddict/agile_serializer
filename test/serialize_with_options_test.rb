@@ -133,7 +133,7 @@ class SerializeWithOptionsTest < Test::Unit::TestCase
 
     context "#deep" do
       setup do
-        @post_hash = json( @post, :flavor => :deep )
+        @post_hash = json( @post, :set => :deep )
       end
 
       should "include specified methods on associations" do

@@ -1,3 +1,4 @@
+require 'agile_serializer/deep_merge_all'
 module AgileSerializer
 
   if defined?(Rails) and Rails::VERSION::MAJOR >= 3
@@ -13,7 +14,15 @@ module AgileSerializer
     configuration = self.serializer_configuration.try(:dup) || {}
     options       = self.serializer_options.try(:dup) || {}
 
-    configuration[set] = Config.new(configuration).instance_eval(&block)
+    conf = Config.new(configuration).instance_eval(&block)
+
+    if Hash === set
+      set, inherit_from = set.keys.first.to_sym, set.values.first.to_sym
+      raise "Please define set #{inherit_from} before #{set}." unless configuration[inherit_from]
+      configuration[set] = self.serialization_configuration(inherit_from).deep_merge_all(conf.delete_if{|k, v| v.nil? })
+    else
+      configuration[set] = conf
+    end
 
     self.serializer_configuration = configuration
     self.serializer_options = options
@@ -96,7 +105,7 @@ module AgileSerializer
     private
 
     def parse_serialization_options(opts)
-      if set = opts[:flavor]
+      if set = opts[:set]
         new_opts = {}
         root = opts[:root] and new_opts.merge!(:root => root)
       else
