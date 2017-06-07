@@ -31,6 +31,12 @@ class User < ActiveRecord::Base
     skip_types true
   end
 
+  serialize_with_options(:with_move) do
+    methods :post_count
+    includes :posts
+    move :posts => :writings, :post_count => :num_posts
+  end
+
   def post_count
     self.posts.count
   end
@@ -83,7 +89,7 @@ class CheckIn < ActiveRecord::Base
   end
 end
 
-class SerializeWithOptionsTest < Test::Unit::TestCase
+class SerializeWithOptionsTest < Minitest::Test
   def json(obj, opts={})
     obj.as_json(opts).with_indifferent_access
   end
@@ -103,6 +109,7 @@ class SerializeWithOptionsTest < Test::Unit::TestCase
       setup do
         @user_hash = json( @user )
         @post_hash = json( @post )
+        @user_hash_with_move = json( @user, :flavor => :with_move )
         @blog_post_hash = json( @blog_post )
       end
 
@@ -115,11 +122,11 @@ class SerializeWithOptionsTest < Test::Unit::TestCase
       end
 
       should "exclude specified attributes" do
-        assert_equal nil, @user_hash["email"]
+        assert_nil @user_hash["email"]
       end
 
       should "exclude attributes not in :only list" do
-        assert_equal nil, @post_hash["content"]
+        assert_nil @post_hash["content"]
       end
 
       should "include specified associations" do
@@ -128,6 +135,11 @@ class SerializeWithOptionsTest < Test::Unit::TestCase
 
       should "be identical in inherited model" do
         assert_equal @post_hash["title"], @blog_post_hash["title"]
+      end
+
+      should "move selected attributes" do
+        assert_equal @user.posts.first.title, @user_hash_with_move["writings"].first["title"]
+        assert_equal @user.post_count, @user_hash_with_move["num_posts"]
       end
     end
 
